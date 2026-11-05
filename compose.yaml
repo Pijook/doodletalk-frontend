@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - '5173:80'
+    environment:
+      BACKEND_ORIGIN: http://backend:8080
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ../doodletalk-backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/doodletalk
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: doodletalk
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d doodletalk']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
