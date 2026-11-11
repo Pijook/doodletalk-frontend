@@ -183,3 +183,31 @@ configuration as documented above. Publishing an image does not start either ser
 
 Workflow actions are pinned to verified commit SHAs. Pipeline structure follows
 [Docker's official GitHub Actions guide](https://docs.docker.com/build/ci/github-actions/).
+
+## Nowe funkcje pokoju i edytora
+
+- Kliknięcie obrazu w galerii otwiera podgląd z powiększeniem 100–400% i przewijaniem.
+- Obrazy w głosowaniu i wynikach można pobrać z galerii lub podglądu.
+- Pędzel obsługuje kolor HEX, próbnik koloru i grubość 1–50 px, także na telefonie.
+- Wypełnienie działa na połączonym obszarze jednego koloru; obsługuje cofanie i zapis szkicu.
+- Prowadzący widzi listę przesłanych prac bez dostępu do ich treści przed odkryciem.
+- Przy uczestnikach prowadzący ma przyciski przekazania roli i wyrzucenia (z potwierdzeniem).
+  Przekazanie działa tylko między rundami, przed przygotowaniem kolejnego obrazka;
+  prowadzący zamienia się rolą z wybraną osobą. Wyrzucenie blokuje bieżący profil gościa.
+- Kopiowanie zaproszenia ma mechanizm zapasowy dla przeglądarek bez Clipboard API;
+  jeśli oba mechanizmy zawiodą, pojawia się pole do ręcznego skopiowania linku.
+- Przełącznik English/Polski zapamiętuje wybór w przeglądarce i nie resetuje rysunku.
+
+Nowe endpointy backendu: `POST /api/games/{id}/host` (`{memberId}`),
+`POST /api/games/{id}/members/{memberId}/kick`; snapshot rundy zawiera `submissionStatus`.
+Wymagana jest odpowiadająca wersja backendu z migracjami Liquibase nr 3 i `4-viewer-invites`.
+
+## Zaproszenia dla streamerów
+
+Kody zaproszeń są domyślnie ukryte. Przycisk „Pokaż/Ukryj kody zaproszeń” w nagłówku
+zapamiętuje wybór w przeglądarce i obejmuje pokój, listę pokojów, pole dołączania oraz
+ręczne kopiowanie po odmowie dostępu do schowka. Kopiowanie działa również przy ukrytych kodach.
+
+Prowadzący ma dwa zaproszenia: dla rysujących i dla głosujących. Pozostali uczestnicy
+widzą tylko zaproszenie dla głosujących. Link zawiera kod i rolę; kod `V-…` wpisany ręcznie
+również automatycznie wybiera widza. Backend egzekwuje rolę i nie ujawnia kodu rysujących widzom.

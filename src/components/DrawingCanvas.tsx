@@ -1,6 +1,8 @@
+import { t, useLanguage } from '../lib/i18n'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Download, Eraser, Pencil, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { Button, Modal, Notice } from './ui'
+import { floodFill } from '../lib/fill'
 
 const COLORS = ['#283d32', '#7571b5', '#e98468', '#e2b653', '#79a47a', '#69a6c3', '#c175a1']
 export function DrawingCanvas({
@@ -14,6 +16,8 @@ export function DrawingCanvas({
   busy: boolean
   submitted: boolean
 }) {
+  useLanguage()
+
   const ref = useRef<HTMLCanvasElement>(null),
     drawing = useRef(false)
   const history = useRef<string[]>([])
@@ -28,6 +32,8 @@ export function DrawingCanvas({
     [error, setError] = useState(''),
     [localBusy, setLocalBusy] = useState(false)
   const [storageAvailable, setStorageAvailable] = useState(true)
+  const [fill, setFill] = useState(false)
+  const [hex, setHex] = useState(COLORS[0])
   const disabled = busy || localBusy || !ready
   function persist(value?: string) {
     try {
@@ -84,6 +90,14 @@ export function DrawingCanvas({
     drawing.current = true
     const context = event.currentTarget.getContext('2d')!,
       p = point(event)
+    if (fill) {
+      const image = context.getImageData(0, 0, 1000, 700)
+      if (floodFill(image, p.x, p.y, color)) {
+        context.putImageData(image, 0, 0)
+        end()
+      } else drawing.current = false
+      return
+    }
     context.strokeStyle = eraser ? '#ffffff' : color
     context.fillStyle = context.strokeStyle
     context.lineWidth = eraser ? size * 4 : size
@@ -142,7 +156,7 @@ export function DrawingCanvas({
     const blob = await new Promise<Blob | null>((resolve) =>
       ref.current!.toBlob(resolve, 'image/png'),
     )
-    if (!blob) throw new Error('Could not export your drawing. Please try again.')
+    if (!blob) throw new Error(t('Could not export your drawing. Please try again.'))
     return new File([blob], 'my-doodle.png', { type: 'image/png' })
   }
   async function submit() {
@@ -151,7 +165,7 @@ export function DrawingCanvas({
     try {
       await onSubmit(await file())
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not submit your drawing.')
+      setError(e instanceof Error ? e.message : t('Could not submit your drawing.'))
     } finally {
       setLocalBusy(false)
     }
@@ -162,59 +176,110 @@ export function DrawingCanvas({
         <div className="tool-group">
           <button
             type="button"
-            className={`tool ${!eraser ? 'active' : ''}`}
-            aria-label="Pencil"
-            aria-pressed={!eraser}
+            className={`tool ${!eraser && !fill ? 'active' : ''}`}
+            aria-label={t('Pencil')}
+            aria-pressed={!eraser && !fill}
             disabled={disabled}
-            onClick={() => setEraser(false)}
+            onClick={() => {
+              setEraser(false)
+              setFill(false)
+            }}
           >
             <Pencil size={18} />
           </button>
           <button
             type="button"
             className={`tool ${eraser ? 'active' : ''}`}
-            aria-label="Eraser"
+            aria-label={t('Eraser')}
             aria-pressed={eraser}
             disabled={disabled}
-            onClick={() => setEraser(true)}
+            onClick={() => {
+              setEraser(true)
+              setFill(false)
+            }}
           >
             <Eraser size={18} />
           </button>
         </div>
-        <div className="swatches" aria-label="Pencil colors">
+        <Button
+          className={fill ? '' : 'secondary'}
+          aria-pressed={fill}
+          disabled={disabled}
+          onClick={() => {
+            setFill(true)
+            setEraser(false)
+          }}
+        >
+          {t('Fill')}
+        </Button>
+        <div className="swatches" aria-label={t('Pencil colors')}>
           {COLORS.map((value, index) => (
             <button
               type="button"
               key={value}
               className={`swatch ${color === value && !eraser ? 'selected' : ''}`}
               style={{ backgroundColor: value }}
-              aria-label={`${['Charcoal', 'Lavender', 'Coral', 'Gold', 'Green', 'Blue', 'Rose'][index]} pencil`}
+              aria-label={t(
+                '{0} pencil',
+                  t(['Charcoal', 'Lavender', 'Coral', 'Gold', 'Green', 'Blue', 'Rose'][index]),
+              )}
               aria-pressed={color === value && !eraser}
               disabled={disabled}
               onClick={() => {
                 setColor(value)
+                setHex(value)
                 setEraser(false)
               }}
             />
           ))}
         </div>
-        <label className="brush-size">
-          Size
+        <label className="hex-color">
+          HEX
           <input
-            aria-label="Brush size"
+            aria-label={t('HEX color')}
+            value={hex}
+            maxLength={7}
+            disabled={disabled}
+            aria-invalid={!/^#[0-9a-f]{6}$/i.test(hex)}
+            onChange={(e) => {
+              setHex(e.target.value)
+              if (/^#[0-9a-f]{6}$/i.test(e.target.value)) {
+                setColor(e.target.value)
+                setEraser(false)
+              }
+            }}
+            onBlur={() => setHex(color)}
+          />
+          <input
+            type="color"
+            aria-label={t('Choose color')}
+            value={color}
+            disabled={disabled}
+            onChange={(e) => {
+              setColor(e.target.value)
+              setHex(e.target.value)
+              setEraser(false)
+            }}
+          />
+        </label>
+        <label className="brush-size">
+          {t('Size')}
+          <input
+            aria-label={t('Brush size')}
             type="range"
-            min={2}
-            max={24}
+            min={1}
+            max={50}
             value={size}
             disabled={disabled}
             onChange={(e) => setSize(Number(e.target.value))}
           />
+          <output>{size} px</output>
         </label>
         <div className="tool-group end">
           <button
             type="button"
             className="tool"
-            aria-label="Undo stroke"
+            aria-label={t('Undo stroke')}
             disabled={!undoCount || disabled}
             onClick={undo}
           >
@@ -223,7 +288,7 @@ export function DrawingCanvas({
           <button
             type="button"
             className="tool"
-            aria-label="Clear canvas"
+            aria-label={t('Clear canvas')}
             disabled={!hasInk || disabled}
             onClick={() => setClearDialog(true)}
           >
@@ -236,7 +301,7 @@ export function DrawingCanvas({
           ref={ref}
           width={1000}
           height={700}
-          aria-label="Your drawing canvas"
+          aria-label={t('Your drawing canvas')}
           onPointerDown={start}
           onPointerMove={move}
           onPointerUp={end}
@@ -244,19 +309,19 @@ export function DrawingCanvas({
           onLostPointerCapture={end}
         />
         {!hasInk && (
-          <span className="canvas-placeholder">A blank page. A very good beginning.</span>
+          <span className="canvas-placeholder">{t('A blank page. A very good beginning.')}</span>
         )}
       </div>
       <div className="canvas-bottom">
         <small>
           {storageAvailable
-            ? 'Draft saved in this tab · your art stays private until reveal'
-            : 'Draft saving unavailable · download a copy before leaving'}
+            ? t('Draft saved in this tab · your art stays private until reveal')
+            : t('Draft saving unavailable · download a copy before leaving')}
         </small>
         <div className="actions">
           <Button
             className="text-button"
-            aria-label="Download drawing"
+            aria-label={t('Download drawing')}
             disabled={!hasInk || disabled}
             onClick={async () => {
               try {
@@ -280,22 +345,23 @@ export function DrawingCanvas({
             onClick={() => void submit()}
           >
             <Send size={16} />
-            {submitted ? 'Update drawing' : 'Submit drawing'}
+            {submitted ? t('Update drawing') : t('Submit drawing')}
           </Button>
         </div>
       </div>
       {error && <Notice>{error}</Notice>}
       {clearDialog && (
-        <Modal title="A fresh piece of paper?" onClose={() => setClearDialog(false)}>
+        <Modal title={t('A fresh piece of paper?')} onClose={() => setClearDialog(false)}>
           <p>
-            This clears your local canvas. A drawing you already submitted will stay in the room
-            until you replace it.
+            {t(
+              'This clears your local canvas. A drawing you already submitted will stay in the room until you replace it.',
+            )}
           </p>
           <div className="actions">
             <Button className="secondary" onClick={() => setClearDialog(false)}>
-              Keep drawing
+              {t('Keep drawing')}
             </Button>
-            <Button onClick={clear}>Clear canvas</Button>
+            <Button onClick={clear}>{t('Clear canvas')}</Button>
           </div>
         </Modal>
       )}

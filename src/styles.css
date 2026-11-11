@@ -2623,3 +2623,110 @@ dialog > .actions {
     font-size: 10px;
   }
 }
+
+/* Keep drawing controls available at every viewport size. */
+.canvas-toolbar .brush-size {
+  display: flex;
+  font-size: 12px;
+}
+.brush-size input {
+  width: 90px;
+}
+.hex-color {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.hex-color input:not([type='color']) {
+  width: 88px;
+  padding: 6px;
+}
+.hex-color input[type='color'] {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+}
+.hex-color input[aria-invalid='true'] {
+  border-color: #b33;
+}
+.private-image {
+  position: relative;
+}
+.image-open {
+  display: block;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
+}
+.image-download {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: var(--paper);
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+dialog.image-dialog {
+  width: min(1100px, calc(100vw - 32px));
+}
+.image-viewport {
+  overflow: auto;
+  max-height: 65vh;
+  margin: 15px 0;
+  background: white;
+}
+.private-image .image-viewport img {
+  display: block;
+  object-fit: contain;
+  max-height: none;
+}
+.member-actions {
+  display: flex;
+  margin-left: auto;
+  gap: 4px;
+}
+.submission-status {
+  list-style: none;
+  padding: 0;
+}
+.submission-status li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.language-select {
+  width: auto;
+  padding: 6px;
+  font-size: 12px;
+}
+
+.invite-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.invite-code {
+  min-width: 0;
+}
+.invite-code .room-code strong {
+  font-size: 16px;
+}
+.invite-privacy {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 7px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.site-header nav {
+  flex-wrap: wrap;
+}

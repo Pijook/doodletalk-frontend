@@ -1,13 +1,16 @@
+import { t, useLanguage } from './lib/i18n'
 import { Link, Route, Routes } from 'react-router-dom'
 import { Footer, Header } from './components/ui'
 import Home from './pages/Home'
 import Room from './pages/Room'
 
 export default function App() {
+  useLanguage()
+
   return (
     <>
       <a href="#main-content" className="skip-link">
-        Skip to content
+        {t('Skip to content')}
       </a>
       <Header />
       <div id="main-content">
@@ -18,10 +21,10 @@ export default function App() {
             path="*"
             element={
               <main className="page-width error-page">
-                <h1>A little off the page.</h1>
-                <p>This page doesn’t exist, but a drawing party could.</p>
+                <h1>{t('A little off the page.')}</h1>
+                <p>{t('This page doesn’t exist, but a drawing party could.')}</p>
                 <Link to="/" className="button">
-                  Back to the studio
+                  {t('Back to the studio')}
                 </Link>
               </main>
             }

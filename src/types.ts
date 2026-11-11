@@ -10,7 +10,8 @@ export interface Game {
   id: string
   ownerId: string
   title: string
-  joinCode: string
+  joinCode: string | null
+  viewerCode: string
   maxPlayers: number
   closed: boolean
   version: number
@@ -45,6 +46,7 @@ export interface RoundView extends RoundSummary {
   submittedDrawings: number
   drawings: Drawing[]
   myVote: string | null
+  submissionStatus?: { playerId: string; displayName: string; submitted: boolean }[]
 }
 export interface Score {
   drawingId: string

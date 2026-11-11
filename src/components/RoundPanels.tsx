@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../lib/i18n'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -41,6 +42,8 @@ export function NewRound({
   next?: boolean
   onCreated?: () => void
 }) {
+  useLanguage()
+
   const [file, setFile] = useState<File | null>(null)
   const refresh = useRefreshRoom(gameId)
   const mutation = useMutation({
@@ -58,18 +61,19 @@ export function NewRound({
           <ImagePlus size={22} />
         </span>
         <div>
-          <span className="eyebrow">ONLY YOU WILL SEE IT</span>
-          <h2>{next ? 'Another round of imagination?' : 'It starts with a secret image.'}</h2>
+          <span className="eyebrow">{t('ONLY YOU WILL SEE IT')}</span>
+          <h2>{next ? t('Another round of imagination?') : t('It starts with a secret image.')}</h2>
         </div>
       </div>
       <p className="muted">
-        Choose something fun to describe. Your artists won’t see the original until you reveal their
-        creations.
+        {t(
+          'Choose something fun to describe. Your artists won’t see the original until you reveal their creations.',
+        )}
       </p>
       <ImagePicker
         value={file}
         onChange={setFile}
-        label="Choose the secret image"
+        label={t('Choose the secret image')}
         disabled={mutation.isPending}
       />
       <ErrorNotice error={mutation.error} />
@@ -80,12 +84,14 @@ export function NewRound({
         onClick={() => mutation.mutate()}
       >
         <Sparkles size={17} />
-        {next ? 'Create next round' : 'Prepare the first round'}
+        {next ? t('Create next round') : t('Prepare the first round')}
       </Button>
     </section>
   )
 }
 function DescriptionEditor({ round }: { round: RoundView }) {
+  useLanguage()
+
   const [text, setText] = useState(round.description),
     [dirty, setDirty] = useState(false)
   const refresh = useRefreshRoom(round.gameId)
@@ -101,10 +107,10 @@ function DescriptionEditor({ round }: { round: RoundView }) {
   }, [round.description, dirty])
   return (
     <div className="description-editor">
-      <label htmlFor="description">Give them a little direction</label>
+      <label htmlFor="description">{t('Give them a little direction')}</label>
       <textarea
         id="description"
-        placeholder="A little house beside a tree. The roof is pointed…"
+        placeholder={t('A little house beside a tree. The roof is pointed…')}
         maxLength={4000}
         rows={3}
         value={text}
@@ -115,7 +121,7 @@ function DescriptionEditor({ round }: { round: RoundView }) {
         }}
       />
       <div className="description-footer">
-        <small>Describe it on your call, or share a written hint.</small>
+        <small>{t('Describe it on your call, or share a written hint.')}</small>
         <Button
           className="secondary"
           disabled={!dirty}
@@ -123,7 +129,7 @@ function DescriptionEditor({ round }: { round: RoundView }) {
           onClick={() => mutation.mutate()}
         >
           <Send size={15} />
-          Share description
+          {t('Share description')}
         </Button>
       </div>
       <ErrorNotice error={mutation.error} />
@@ -131,6 +137,8 @@ function DescriptionEditor({ round }: { round: RoundView }) {
   )
 }
 export function HostRound({ view, round }: { view: GameView; round: RoundView }) {
+  useLanguage()
+
   const refresh = useRefreshRoom(round.gameId)
   const [confirm, setConfirm] = useState<'reveal' | 'finish' | null>(null)
   const mutation = useMutation({
@@ -150,28 +158,29 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
               <Mic size={22} />
             </span>
             <div>
-              <span className="eyebrow">YOU’RE THE STORYTELLER</span>
+              <span className="eyebrow">{t('YOU’RE THE STORYTELLER')}</span>
               <h2>
                 {round.state === 'PREPARING'
-                  ? 'A little mystery. A lot of possibility.'
-                  : 'Tell them what you see.'}
+                  ? t('A little mystery. A lot of possibility.')
+                  : t('Tell them what you see.')}
               </h2>
             </div>
           </div>
           <div className="host-reference">
             {round.referenceImageUrl && (
-              <PrivateImage path={round.referenceImageUrl} alt="The secret reference image" />
+              <PrivateImage path={round.referenceImageUrl} alt={t('The secret reference image')} />
             )}
             <span className="private-label">
               <LockKeyhole size={13} />
-              Only you can see this
+              {t('Only you can see this')}
             </span>
           </div>
           {round.state === 'PREPARING' ? (
             <div className="host-instructions">
               <p>
-                Make sure your artists are on the call. Describe the image without showing it, and
-                see where their imaginations go.
+                {t(
+                  'Make sure your artists are on the call. Describe the image without showing it, and see where their imaginations go.',
+                )}
               </p>
               <Button
                 busy={mutation.isPending}
@@ -179,10 +188,10 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
                 onClick={() => mutation.mutate('start')}
               >
                 <Play size={17} />
-                Start drawing
+                {t('Start drawing')}
               </Button>
               {!view.members.some((m) => m.role === 'PLAYER') && (
-                <small>Invite at least one artist to start.</small>
+                <small>{t('Invite at least one artist to start.')}</small>
               )}
             </div>
           ) : (
@@ -192,13 +201,14 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
                 <div className="reveal-bar">
                   <div>
                     <strong>
-                      {round.submittedDrawings} of {round.expectedDrawings} drawings in
+                      {round.submittedDrawings} {t('of')} {round.expectedDrawings}{' '}
+                      {t('drawings in')}
                     </strong>
-                    <span>You decide when it’s time for the big reveal.</span>
+                    <span>{t('You decide when it’s time for the big reveal.')}</span>
                   </div>
                   <Button disabled={!round.submittedDrawings} onClick={() => setConfirm('reveal')}>
                     <Eye size={18} />
-                    Reveal drawings
+                    {t('Reveal drawings')}
                   </Button>
                 </div>
               </>
@@ -210,26 +220,32 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
       {round.state === 'VOTING' && !view.game.closed && (
         <div className="voting-host-bar">
           <div>
-            <strong>The audience has the floor.</strong>
-            <span>When everyone has voted, close voting to see the results.</span>
+            <strong>{t('The audience has the floor.')}</strong>
+            <span>{t('When everyone has voted, close voting to see the results.')}</span>
           </div>
           <Button onClick={() => setConfirm('finish')}>
             <Trophy size={18} />
-            Finish voting
+            {t('Finish voting')}
           </Button>
         </div>
       )}
       {confirm && (
         <Modal
-          title={confirm === 'reveal' ? 'Ready for the big reveal?' : 'Let’s see the results?'}
+          title={
+            confirm === 'reveal' ? t('Ready for the big reveal?') : t('Let’s see the results?')
+          }
           onClose={() => {
             if (!mutation.isPending) setConfirm(null)
           }}
         >
           <p>
             {confirm === 'reveal'
-              ? `${round.submittedDrawings} of ${round.expectedDrawings} artists have submitted. Revealing closes all uploads and opens voting. This can’t be undone.`
-              : 'This closes voting for everyone and reveals the final ranking.'}
+              ? t(
+                  '{0} of {1} artists have submitted. Revealing closes all uploads and opens voting. This can’t be undone.',
+                  round.submittedDrawings,
+                  round.expectedDrawings,
+                )
+              : t('This closes voting for everyone and reveals the final ranking.')}
           </p>
           <ErrorNotice error={mutation.error} />
           <div className="actions">
@@ -238,10 +254,10 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
               disabled={mutation.isPending}
               onClick={() => setConfirm(null)}
             >
-              Not yet
+              {t('Not yet')}
             </Button>
             <Button busy={mutation.isPending} onClick={() => mutation.mutate(confirm)}>
-              {confirm === 'reveal' ? 'Reveal now' : 'Show results'}
+              {confirm === 'reveal' ? t('Reveal now') : t('Show results')}
             </Button>
           </div>
         </Modal>
@@ -250,35 +266,45 @@ export function HostRound({ view, round }: { view: GameView; round: RoundView })
   )
 }
 export function Waiting({ round, role }: { round?: RoundView; role: string }) {
+  useLanguage()
+
   return (
     <section className="panel waiting-panel">
       <div className="waiting-sketch">
         <Brush size={58} strokeWidth={1} />
         <span className="waiting-spark">✳</span>
       </div>
-      <span className="eyebrow">A LITTLE ANTICIPATION</span>
+      <span className="eyebrow">{t('A LITTLE ANTICIPATION')}</span>
       <h2>
         {!round
-          ? 'The next masterpiece is loading.'
+          ? t('The next masterpiece is loading.')
           : round.state === 'PREPARING'
-            ? 'Pencils at the ready.'
-            : 'Good things take a little doodling.'}
+            ? t('Pencils at the ready.')
+            : t('Good things take a little doodling.')}
       </h2>
       <p>
         {!round
-          ? 'Your host is choosing a secret image. Get comfortable — the room will update when it’s ready.'
+          ? t(
+              'Your host is choosing a secret image. Get comfortable — the room will update when it’s ready.',
+            )
           : round.state === 'PREPARING'
-            ? 'Your host will start the round soon. Join the call and let your imagination warm up.'
-            : 'The artists are bringing the description to life. When the host reveals their work, you can pick your favorite.'}
+            ? t(
+                'Your host will start the round soon. Join the call and let your imagination warm up.',
+              )
+            : t(
+                'The artists are bringing the description to life. When the host reveals their work, you can pick your favorite.',
+              )}
       </p>
       <span className="pill neutral">
         <span className="tiny-dot" />
-        {role === 'VIEWER' ? 'Your vote comes after the reveal' : 'Waiting for the host'}
+        {role === 'VIEWER' ? t('Your vote comes after the reveal') : t('Waiting for the host')}
       </span>
     </section>
   )
 }
 export function PlayerRound({ round, closed }: { round: RoundView; closed: boolean }) {
+  useLanguage()
+
   const { session } = useAuth(),
     client = useQueryClient()
   const [mode, setMode] = useState<'draw' | 'upload'>('draw'),
@@ -300,8 +326,8 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
           <Brush size={22} />
         </span>
         <div>
-          <span className="eyebrow">TRUST YOUR IMAGINATION</span>
-          <h2>Your version of the story.</h2>
+          <span className="eyebrow">{t('TRUST YOUR IMAGINATION')}</span>
+          <h2>{t('Your version of the story.')}</h2>
         </div>
       </div>
       {round.description ? (
@@ -311,21 +337,21 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
         </blockquote>
       ) : (
         <p className="muted">
-          Listen to your host on the call. There’s no wrong way to picture it.
+          {t('Listen to your host on the call. There’s no wrong way to picture it.')}
         </p>
       )}
       {closed ? (
-        <Notice tone="info">The room is closed. No more drawings can be submitted.</Notice>
+        <Notice tone="info">{t('The room is closed. No more drawings can be submitted.')}</Notice>
       ) : (
         <>
-          <div className="editor-tabs" role="tablist" aria-label="Drawing method">
+          <div className="editor-tabs" role="tablist" aria-label={t('Drawing method')}>
             <button role="tab" aria-selected={mode === 'draw'} onClick={() => setMode('draw')}>
               <Brush size={16} />
-              Draw here
+              {t('Draw here')}
             </button>
             <button role="tab" aria-selected={mode === 'upload'} onClick={() => setMode('upload')}>
               <Upload size={16} />
-              Upload an image
+              {t('Upload an image')}
             </button>
           </div>
           {mode === 'draw' ? (
@@ -343,7 +369,7 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
                 value={file}
                 onChange={setFile}
                 disabled={mutation.isPending}
-                label="Upload your drawing"
+                label={t('Upload your drawing')}
               />
               <Button
                 className="full"
@@ -352,7 +378,7 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
                 onClick={() => mutation.mutate(file!)}
               >
                 <Send size={17} />
-                {own ? 'Replace submitted drawing' : 'Submit drawing'}
+                {own ? t('Replace submitted drawing') : t('Submit drawing')}
               </Button>
               <ErrorNotice error={mutation.error} />
             </div>
@@ -361,15 +387,15 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
       )}
       {own && (
         <div className="submitted-drawing">
-          <PrivateImage path={own.imageUrl} alt="Your submitted drawing" />
+          <PrivateImage path={own.imageUrl} alt={t('Your submitted drawing')} />
           <div>
             <strong>
               <Check size={16} />
-              Your drawing is in!
+              {t('Your drawing is in!')}
             </strong>
             <p>
-              Only you can see it for now.{' '}
-              {closed ? '' : 'You can replace it until the host reveals.'}
+              {t('Only you can see it for now.')}{' '}
+              {closed ? '' : t('You can replace it until the host reveals.')}
             </p>
           </div>
         </div>
@@ -378,6 +404,8 @@ export function PlayerRound({ round, closed }: { round: RoundView; closed: boole
   )
 }
 export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
+  useLanguage()
+
   const refresh = useRefreshRoom(round.gameId)
   const [selected, setSelected] = useState<string | null>(null)
   const results = useQuery({
@@ -406,44 +434,53 @@ export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
     <section className="gallery-section">
       <div className="gallery-heading">
         <span className="eyebrow">
-          {round.state === 'FINISHED' ? 'EVERY INTERPRETATION TELLS A STORY' : 'THE BIG REVEAL'}
+          {round.state === 'FINISHED'
+            ? t('EVERY INTERPRETATION TELLS A STORY')
+            : t('THE BIG REVEAL')}
         </span>
         <h2>
-          {round.state === 'FINISHED' ? 'A round of applause.' : 'Same story. Different worlds.'}
+          {round.state === 'FINISHED'
+            ? t('A round of applause.')
+            : t('Same story. Different worlds.')}
         </h2>
         <p>
           {round.state === 'FINISHED'
-            ? `${results.data?.totalVotes ?? '…'} audience ${results.data?.totalVotes === 1 ? 'vote' : 'votes'}. A whole lot of imagination.`
+            ? t(
+                '{0} audience {1}. A whole lot of imagination.',
+                results.data?.totalVotes ?? '…',
+                results.data?.totalVotes === 1 ? 'vote' : 'votes',
+              )
             : canVote
-              ? 'Which drawing captured the description best? Choose your favorite.'
+              ? t('Which drawing captured the description best? Choose your favorite.')
               : round.myVote
-                ? 'Your vote is in. Enjoy the gallery while everyone makes their pick.'
-                : 'Compare the original with every wonderfully different interpretation.'}
+                ? t('Your vote is in. Enjoy the gallery while everyone makes their pick.')
+                : t('Compare the original with every wonderfully different interpretation.')}
         </p>
       </div>
       {round.myVote && (
         <div className="vote-confirmation" role="status">
           <Check size={18} />
-          Your vote has been recorded.
+          {t('Your vote has been recorded.')}
         </div>
       )}
       {round.referenceImageUrl && (
         <article className="reference-card">
           <div>
-            <span className="eyebrow">THE ORIGINAL</span>
-            <h3>Where it all began.</h3>
+            <span className="eyebrow">{t('THE ORIGINAL')}</span>
+            <h3>{t('Where it all began.')}</h3>
             {round.description && <p>{round.description}</p>}
-            <span className="pill neutral">The host’s secret image</span>
+            <span className="pill neutral">{t('The host’s secret image')}</span>
           </div>
           <PrivateImage
             path={round.referenceImageUrl}
-            alt="The original reference image, now revealed"
+            alt={t('The original reference image, now revealed')}
+            interactive
           />
         </article>
       )}
       <ErrorNotice error={results.error} />
       {results.isPending && round.state === 'FINISHED' && (
-        <Loading label="Counting the applause…" />
+        <Loading label={t('Counting the applause…')} />
       )}
       <div className="gallery-grid">
         {drawings.map((drawing, index) => {
@@ -456,13 +493,17 @@ export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
               key={drawing.id}
             >
               <div className="drawing-image">
-                <PrivateImage path={drawing.imageUrl} alt={`${drawing.authorName}’s drawing`} />
+                <PrivateImage
+                  path={drawing.imageUrl}
+                  alt={t('{0}’s drawing', drawing.authorName)}
+                  interactive
+                />
                 {winner && (
                   <span className="winner-badge">
                     <Trophy size={14} />
                     {results.data?.scores.filter((s) => s.rank === 1).length === 1
-                      ? 'Audience favorite'
-                      : 'Joint favorite'}
+                      ? t('Audience favorite')
+                      : t('Joint favorite')}
                   </span>
                 )}
               </div>
@@ -474,21 +515,26 @@ export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
                   <h3>{drawing.authorName}</h3>
                   <span>
                     {score
-                      ? `${score.votes} ${score.votes === 1 ? 'vote' : 'votes'} · Place ${score.rank}`
-                      : 'A unique interpretation'}
+                      ? t(
+                          '{0} {1} · Place {2}',
+                          score.votes,
+                          score.votes === 1 ? 'vote' : 'votes',
+                          score.rank,
+                        )
+                      : t('A unique interpretation')}
                   </span>
                 </div>
               </div>
               {canVote && (
                 <Button className="secondary full" onClick={() => setSelected(drawing.id)}>
                   <Vote size={17} />
-                  Vote for this drawing
+                  {t('Vote for this drawing')}
                 </Button>
               )}
               {voted && (
                 <div className="your-vote">
                   <Check size={16} />
-                  Your pick
+                  {t('Your pick')}
                 </div>
               )}
             </article>
@@ -497,17 +543,17 @@ export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
       </div>
       {chosen && (
         <Modal
-          title={`Vote for ${chosen.authorName}?`}
+          title={t('Vote for {0}?', chosen.authorName)}
           onClose={() => {
             if (!vote.isPending) setSelected(null)
           }}
         >
           <PrivateImage
             path={chosen.imageUrl}
-            alt={`${chosen.authorName}’s drawing`}
+            alt={t('{0}’s drawing', chosen.authorName)}
             className="vote-preview"
           />
-          <p>You have one vote this round. Once cast, it can’t be changed.</p>
+          <p>{t('You have one vote this round. Once cast, it can’t be changed.')}</p>
           <ErrorNotice error={vote.error} />
           <div className="actions">
             <Button
@@ -515,11 +561,11 @@ export function Gallery({ view, round }: { view: GameView; round: RoundView }) {
               disabled={vote.isPending}
               onClick={() => setSelected(null)}
             >
-              Keep looking
+              {t('Keep looking')}
             </Button>
             <Button busy={vote.isPending} onClick={() => vote.mutate(chosen.id)}>
               <Check size={17} />
-              Confirm vote
+              {t('Confirm vote')}
             </Button>
           </div>
         </Modal>

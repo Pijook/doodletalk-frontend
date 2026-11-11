@@ -1,8 +1,9 @@
+import { t, useLanguage } from '../lib/i18n'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, Crown, Eye, LockKeyhole, Pencil, Radio, Users } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useRoomConnection } from '../lib/realtime'
 import { Button, CopyCode, ErrorNotice, Loading, Modal, Notice } from '../components/ui'
@@ -17,8 +18,11 @@ import {
 import type { RoundState } from '../types'
 
 const STATES: RoundState[] = ['PREPARING', 'DRAWING', 'VOTING', 'FINISHED']
-const LABELS = ['Get ready', 'Make your mark', 'The big reveal', 'Applause']
+
 export default function Room() {
+  useLanguage()
+
+  const LABELS = [t('Get ready'), t('Make your mark'), t('The big reveal'), t('Applause')]
   const { gameId = '' } = useParams(),
     { session } = useAuth()
   const navigate = useNavigate()
@@ -50,6 +54,21 @@ export default function Room() {
   })
   const connection = useRoomConnection(gameId, !!session && !!room.data)
   const refresh = useRefreshRoom(gameId)
+  const [memberAction, setMemberAction] = useState<{
+    id: string
+    name: string
+    action: 'host' | 'kick'
+  } | null>(null)
+  const manageMember = useMutation({
+    mutationFn: () =>
+      memberAction!.action === 'host'
+        ? api.transferHost(gameId, memberAction!.id)
+        : api.kick(gameId, memberAction!.id),
+    onSuccess: async () => {
+      setMemberAction(null)
+      await refresh()
+    },
+  })
   const close = useMutation({
     mutationFn: () => api.close(gameId),
     onSuccess: async () => {
@@ -61,17 +80,17 @@ export default function Room() {
   if (room.isPending)
     return (
       <main className="page-width">
-        <Loading label="Opening the studio…" />
+        <Loading label={t('Opening the studio…')} />
       </main>
     )
-  if (!room.data)
+  if (!room.data || (room.error instanceof ApiError && [403, 404].includes(room.error.status)))
     return (
       <main className="page-width error-page">
-        <h1>This studio isn’t available.</h1>
+        <h1>{t('This studio isn’t available.')}</h1>
         <ErrorNotice error={room.error} />
-        <p>Use your invite code to join a room with this guest profile.</p>
+        <p>{t('Use your invite code to join a room with this guest profile.')}</p>
         <Link to="/" className="button">
-          Back to the studio
+          {t('Back to the studio')}
         </Link>
       </main>
     )
@@ -82,15 +101,47 @@ export default function Room() {
     viewers = view.members.filter((member) => member.role === 'VIEWER')
   const currentState = round.data?.state || selected?.state || 'PREPARING',
     step = STATES.indexOf(currentState)
+  const canTransfer = view.rounds.every((r) => r.state === 'FINISHED')
+  function memberButtons(member: { id: string; displayName: string }) {
+    return (
+      isHost &&
+      !view.game.closed && (
+        <div className="member-actions">
+          <button
+            className="icon-button"
+            disabled={!canTransfer}
+            title={t('Transfer hosting between rounds')}
+            aria-label={t('Make {0} host', member.displayName)}
+            onClick={() => {
+              manageMember.reset()
+              setMemberAction({ id: member.id, name: member.displayName, action: 'host' })
+            }}
+          >
+            <Crown size={16} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label={t('Kick {0}', member.displayName)}
+            onClick={() => {
+              manageMember.reset()
+              setMemberAction({ id: member.id, name: member.displayName, action: 'kick' })
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )
+    )
+  }
   return (
     <main className="room-page page-width">
       <Link to="/" className="back-link">
         <ArrowLeft size={15} />
-        All rooms
+        {t('All rooms')}
       </Link>
       <div className="room-heading">
         <div>
-          <div className="eyebrow">YOUR LITTLE CORNER OF CREATIVITY</div>
+          <div className="eyebrow">{t('YOUR LITTLE CORNER OF CREATIVITY')}</div>
           <h1>{view.game.title}</h1>
           <div className="room-subtitle">
             <span className="pill">
@@ -102,28 +153,31 @@ export default function Room() {
                 <Eye size={14} />
               )}
               {isHost
-                ? 'You’re the host'
+                ? t('You’re the host')
                 : view.myRole === 'PLAYER'
-                  ? 'You’re an artist'
-                  : 'You’re in the audience'}
+                  ? t('You’re an artist')
+                  : t('You’re in the audience')}
             </span>
             <span className={`connection ${connection}`} role="status">
               <span className="tiny-dot" />
               {connection === 'live'
-                ? 'Live updates'
+                ? t('Live updates')
                 : connection === 'connecting'
-                  ? 'Connecting…'
+                  ? t('Connecting…')
                   : connection === 'offline'
-                    ? 'Offline · reconnecting'
-                    : 'Reconnecting…'}
+                    ? t('Offline · reconnecting')
+                    : t('Reconnecting…')}
             </span>
           </div>
         </div>
-        <CopyCode code={view.game.joinCode} />
+        <div className="invite-codes">
+          {isHost && view.game.joinCode && <CopyCode code={view.game.joinCode} role="PLAYER" />}
+          <CopyCode code={view.game.viewerCode} role="VIEWER" />
+        </div>
       </div>
       {view.game.closed && (
         <Notice tone="info">
-          This room is closed. You can still revisit revealed drawings and results.
+          {t('This room is closed. You can still revisit revealed drawings and results.')}
         </Notice>
       )}
       <ErrorNotice error={room.error} />
@@ -133,16 +187,16 @@ export default function Room() {
             <div>
               <strong>
                 {selected
-                  ? `Round ${selected.number.toString().padStart(2, '0')}`
-                  : 'The waiting room'}
+                  ? t('Round {0}', selected.number.toString().padStart(2, '0'))
+                  : t('The waiting room')}
               </strong>
               {selected && selected.id !== latest?.id && (
-                <span className="history-label">Previous round</span>
+                <span className="history-label">{t('Previous round')}</span>
               )}
             </div>
             {view.rounds.length > 1 && (
               <select
-                aria-label="Choose round"
+                aria-label={t('Choose round')}
                 value={selected?.id || ''}
                 onChange={(e) =>
                   setParams(e.target.value === latest?.id ? {} : { round: e.target.value })
@@ -150,14 +204,14 @@ export default function Room() {
               >
                 {view.rounds.map((r) => (
                   <option key={r.id} value={r.id}>
-                    Round {r.number}
-                    {r.id === latest?.id ? ' · latest' : ''}
+                    {t('Round')} {r.number}
+                    {r.id === latest?.id ? t(' · latest') : ''}
                   </option>
                 ))}
               </select>
             )}
           </div>
-          <ol className="round-steps" aria-label="Round progress">
+          <ol className="round-steps" aria-label={t('Round progress')}>
             {LABELS.map((label, i) => (
               <li
                 key={label}
@@ -170,7 +224,9 @@ export default function Room() {
             ))}
           </ol>
           <ErrorNotice error={round.error} />
-          {selected && !round.data && round.isPending && <Loading label="Unrolling this round…" />}
+          {selected && !round.data && round.isPending && (
+            <Loading label={t('Unrolling this round…')} />
+          )}
           {!selected &&
             (isHost && !view.game.closed ? (
               <NewRound gameId={gameId} />
@@ -212,7 +268,7 @@ export default function Room() {
         <aside className="room-sidebar">
           <section className="members-panel">
             <div className="sidebar-heading">
-              <h2>The good company</h2>
+              <h2>{t('The good company')}</h2>
               <Users size={19} />
             </div>
             <div className="host-member">
@@ -221,12 +277,12 @@ export default function Room() {
               </span>
               <div>
                 <strong>{view.members.find((m) => m.role === 'ORGANIZER')?.displayName}</strong>
-                <span>The storyteller</span>
+                <span>{t('The storyteller')}</span>
               </div>
               <Crown size={17} />
             </div>
             <div className="member-label">
-              ARTISTS
+              {t('ARTISTS')}
               <span>
                 {artists.length} / {view.game.maxPlayers}
               </span>
@@ -240,21 +296,22 @@ export default function Room() {
                     </span>
                     <span>
                       {member.displayName}
-                      {member.id === session.id && <small> (you)</small>}
+                      {member.id === session.id && <small> {t('(you)')}</small>}
                     </span>
                     <Pencil size={14} />
+                    {memberButtons(member)}
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="muted small-copy">
-                A few friends make a great start. Share the room code to invite them.
+                {t('A few friends make a great start. Share the room code to invite them.')}
               </p>
             )}
             <details className="audience">
               <summary>
                 <Eye size={16} />
-                <span>The audience</span>
+                <span>{t('The audience')}</span>
                 <strong>{viewers.length}</strong>
               </summary>
               {viewers.length ? (
@@ -264,19 +321,22 @@ export default function Room() {
                       <span className="avatar small">{member.displayName[0].toUpperCase()}</span>
                       <span>
                         {member.displayName}
-                        {member.id === session.id && <small> (you)</small>}
+                        {member.id === session.id && <small> {t('(you)')}</small>}
                       </span>
+                      {memberButtons(member)}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="small-copy muted">Invite friends to watch and pick their favorite.</p>
+                <p className="small-copy muted">
+                  {t('Invite friends to watch and pick their favorite.')}
+                </p>
               )}
             </details>
             {round.data && (
               <div className="submission-meter">
                 <div>
-                  <span>Drawings submitted</span>
+                  <span>{t('Drawings submitted')}</span>
                   <strong>
                     {round.data.submittedDrawings}/{round.data.expectedDrawings}
                   </strong>
@@ -288,39 +348,60 @@ export default function Room() {
               </div>
             )}
           </section>
+          {isHost && round.data?.submissionStatus && (
+            <section className="members-panel">
+              <h3>{t('Submission status')}</h3>
+              <ul className="submission-status">
+                {round.data.submissionStatus.map((player) => (
+                  <li key={player.playerId}>
+                    <span>{player.displayName}</span>
+                    <span>{player.submitted ? t('Submitted') : t('Waiting')}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="room-note">
             <span className="section-icon peach">
               <LockKeyhole size={20} />
             </span>
-            <h3>A little mystery makes it better.</h3>
+            <h3>{t('A little mystery makes it better.')}</h3>
             <p>
               {isHost
-                ? 'Keep the original to yourself. Describe shapes, colors, and details — let everyone else connect the dots.'
-                : 'Don’t peek! Your interpretation is what makes this fun. Keep your creation to yourself until the reveal.'}
+                ? t(
+                    'Keep the original to yourself. Describe shapes, colors, and details — let everyone else connect the dots.',
+                  )
+                : t(
+                    'Don’t peek! Your interpretation is what makes this fun. Keep your creation to yourself until the reveal.',
+                  )}
             </p>
-            <span className="handwritten">Imperfect is the point.</span>
+            <span className="handwritten">{t('Imperfect is the point.')}</span>
           </section>
           {isHost && !view.game.closed && (
             <button className="close-room" onClick={() => setClosing(true)}>
-              Close this room
+              {t('Close this room')}
             </button>
           )}
           <button className="close-room" onClick={() => setLeaving(true)}>
-            {isHost && !view.game.closed ? 'Close and leave room' : 'Leave room'}
+            {isHost && !view.game.closed ? t('Close and leave room') : t('Leave room')}
           </button>
         </aside>
       </div>
       {leaving && (
         <Modal
-          title={isHost && !view.game.closed ? 'Close and leave room?' : 'Leave this room?'}
+          title={isHost && !view.game.closed ? t('Close and leave room?') : t('Leave this room?')}
           onClose={() => {
             if (!leave.isPending) setLeaving(false)
           }}
         >
           <p>
             {isHost
-              ? 'Leaving as host closes the room for everyone. Submitted drawings and votes are preserved.'
-              : 'You�ll return to the homepage. Submitted drawings and votes stay in the room. You can rejoin with the room code and your current guest profile.'}
+              ? t(
+                  'Leaving as host closes the room for everyone. Submitted drawings and votes are preserved.',
+                )
+              : t(
+                  'You’ll return to the homepage. Submitted drawings and votes stay in the room. You can rejoin with the room code and your current guest profile.',
+                )}
           </p>
           <ErrorNotice error={leave.error} />
           <div className="actions">
@@ -329,24 +410,59 @@ export default function Room() {
               disabled={leave.isPending}
               onClick={() => setLeaving(false)}
             >
-              Stay in room
+              {t('Stay in room')}
             </Button>
             <Button busy={leave.isPending} onClick={() => leave.mutate()}>
-              {isHost && !view.game.closed ? 'Close and leave' : 'Leave room'}
+              {isHost && !view.game.closed ? t('Close and leave') : t('Leave room')}
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {memberAction && (
+        <Modal
+          title={memberAction.action === 'host' ? t('Transfer hosting?') : t('Kick member?')}
+          onClose={() => {
+            if (!manageMember.isPending) setMemberAction(null)
+          }}
+        >
+          <p>
+            <strong>{memberAction.name}</strong>
+          </p>
+          <p>
+            {memberAction.action === 'host'
+              ? t(
+                  'You will exchange roles with this member. They will control the room and prepare the next image.',
+                )
+              : t(
+                  'This guest will lose access and cannot rejoin with the same guest profile. Existing drawings and votes will remain.',
+                )}
+          </p>
+          <ErrorNotice error={manageMember.error} />
+          <div className="actions">
+            <Button
+              className="secondary"
+              disabled={manageMember.isPending}
+              onClick={() => setMemberAction(null)}
+            >
+              {t('Cancel')}
+            </Button>
+            <Button busy={manageMember.isPending} onClick={() => manageMember.mutate()}>
+              {t('Confirm')}
             </Button>
           </div>
         </Modal>
       )}
       {closing && (
         <Modal
-          title="Wrap up this room?"
+          title={t('Wrap up this room?')}
           onClose={() => {
             if (!close.isPending) setClosing(false)
           }}
         >
           <p>
-            Closing ends all drawing, voting, and new joins. Revealed rounds stay available, but
-            unfinished drawings remain private.
+            {t(
+              'Closing ends all drawing, voting, and new joins. Revealed rounds stay available, but unfinished drawings remain private.',
+            )}
           </p>
           <ErrorNotice error={close.error} />
           <div className="actions">
@@ -355,10 +471,10 @@ export default function Room() {
               disabled={close.isPending}
               onClick={() => setClosing(false)}
             >
-              Keep it open
+              {t('Keep it open')}
             </Button>
             <Button busy={close.isPending} onClick={() => close.mutate()}>
-              Close room
+              {t('Close room')}
             </Button>
           </div>
         </Modal>

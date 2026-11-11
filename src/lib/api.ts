@@ -1,4 +1,5 @@
 import type { Session, Game, GameView, RoundView, Drawing, Results, Ticket, Role } from '../types'
+import { t } from './i18n'
 
 export const SESSION_KEY = 'doodletalk.session.v1'
 const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -103,6 +104,10 @@ export const api = {
   game: (id: string, signal?: AbortSignal) => request<GameView>(`/api/games/${id}`, { signal }),
   leave: (id: string) => request<void>(`/api/games/${id}/leave`, json('POST')),
   close: (id: string) => request<void>(`/api/games/${id}/close`, json('POST')),
+  transferHost: (id: string, memberId: string) =>
+    request<void>(`/api/games/${id}/host`, json('POST', { memberId })),
+  kick: (id: string, memberId: string) =>
+    request<void>(`/api/games/${id}/members/${memberId}/kick`, json('POST')),
   round: (game: string, round: string, signal?: AbortSignal) =>
     request<RoundView>(roundPath(game, round), { signal }),
   createRound: (game: string, file: File) =>
@@ -122,5 +127,5 @@ export const api = {
     (await checkedFetch(path, { signal })).blob(),
 }
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  return t(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
 }
